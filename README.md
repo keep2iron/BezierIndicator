@@ -1,7 +1,6 @@
-####源效果
-![](http://i.imgur.com/cxyOo0Y.gif)
+#### 源效果图过大，请参考博客
 
-####实际效果
+#### 实际效果
 ![](http://i.imgur.com/rmvmOAe.gif)
 
 参考的博客地址:
