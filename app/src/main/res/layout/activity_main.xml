@@ -9,16 +9,12 @@
         android:id="@+id/viewPager"
         android:layout_width="match_parent"
         android:layout_height="230dp"
+        android:layout_gravity="bottom"
         android:clipToPadding="false"
-        android:paddingBottom="30dp"
+        android:paddingBottom="10dp"
         android:paddingEnd="@dimen/card_padding"
         android:paddingLeft="@dimen/card_padding"
         android:paddingRight="@dimen/card_padding"
         android:paddingStart="@dimen/card_padding"/>
-
-    <io.github.keep2iron.bezierindicator.BezierIndicator
-        android:id="@+id/bezierIndicator"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>
 
 </LinearLayout>

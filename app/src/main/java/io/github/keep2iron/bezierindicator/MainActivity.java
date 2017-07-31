@@ -10,16 +10,17 @@ import android.widget.ImageView;
 
 public class MainActivity extends AppCompatActivity {
 
+    private ViewPager mViewPager;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        ViewPager mViewPager = (ViewPager) findViewById(R.id.viewPager);
+        mViewPager = (ViewPager) findViewById(R.id.viewPager);
+        mViewPager.setOffscreenPageLimit(3); // viewpager缓存页数
         mViewPager.setPageMargin(60);
-        mViewPager.setOffscreenPageLimit(3);
-        mViewPager.setAdapter(new PagerAdapter() {
-            int[] drawables = {R.drawable.pos1,R.drawable.pos2,R.drawable.pos0};
+        PagerAdapter pagerAdapter = new PagerAdapter() {
+            int[] drawables = {R.drawable.pos1, R.drawable.pos2, R.drawable.pos0};
 
             @Override
             public int getCount() {
@@ -43,8 +44,11 @@ public class MainActivity extends AppCompatActivity {
             public boolean isViewFromObject(View view, Object object) {
                 return view == object;
             }
-        });
-        BezierIndicator mBezierIndicator = (BezierIndicator) findViewById(R.id.bezierIndicator);
-        mViewPager.addOnPageChangeListener(mBezierIndicator);
+        };
+
+        mViewPager.setAdapter(pagerAdapter);
+
+        BezierIndicator bezierIndicator = (BezierIndicator) findViewById(R.id.bezierIndicator);
+        bezierIndicator.setUpWithViewPager(mViewPager);
     }
 }

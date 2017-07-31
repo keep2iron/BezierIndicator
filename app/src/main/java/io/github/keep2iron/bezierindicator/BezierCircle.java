@@ -8,6 +8,9 @@ import android.graphics.Path;
 import android.util.Log;
 import android.view.View;
 import android.view.animation.AccelerateDecelerateInterpolator;
+
+import java.util.Arrays;
+
 import io.github.keep2iron.bezierindicator.entry.HorizontalPoint;
 import io.github.keep2iron.bezierindicator.entry.VerticalPoint;
 
@@ -44,6 +47,8 @@ public class BezierCircle {
         p4 = new VerticalPoint(-R, 0, M);
 
         mPath = new Path();
+
+//        Log.e("tag","p1.x" + p1.x + " p2.x " + p2.x + " p3.x" + p3.x);
     }
 
     public Path buildPath() {
@@ -70,9 +75,9 @@ public class BezierCircle {
             buildCircle1(positionOffset);
         } else if (positionOffset <= 0.5f) {
             buildCircle2(positionOffset);
-        } else if(positionOffset <= 0.8f){
+        } else if (positionOffset <= 0.8f) {
             buildCircle3(positionOffset);
-        } else if(positionOffset <= 1.0f){
+        } else if (positionOffset <= 1.0f) {
             buildCircle4(positionOffset);
         }
     }
@@ -80,6 +85,12 @@ public class BezierCircle {
     private void buildCircle4(float positionOffset) {       //0.8 - 1.0
         float p4X = -9 / 5.f * R + 4 / 5.f * R * (positionOffset - 0.8f) / 0.2f;
         p4.setX(p4X);
+
+        p1.setX(0);
+        p3.setX(0);
+        p2.setX(R);
+
+//        Log.e("tag","p1.x" + p1.x + " p2.x " + p2.x + " p3.x" + p3.x);
     }
 
     /**
@@ -135,23 +146,19 @@ public class BezierCircle {
         p3.setX(0);
         p4.setX(-R);
 
-        if(!isStartWave)
-            p2.setX(R + 4 / 5.0f * R * positionOffset / 0.2f);
+        p2.setX(R + 4 / 5.0f * R * positionOffset / 0.2f);
     }
 
-    private boolean isStartWave;
 
-    public void wave(final boolean isTurnLeft, final View view){
-        if(isStartWave) return;
-
-        ValueAnimator valueAnimator = ValueAnimator.ofFloat(0, (float)Math.PI);
+    public void wave(final boolean isTurnLeft, final View view) {
+        ValueAnimator valueAnimator = ValueAnimator.ofFloat(0, (float) Math.PI);
         valueAnimator.setInterpolator(new AccelerateDecelerateInterpolator());
         valueAnimator.setDuration(400);
         valueAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override
             public void onAnimationUpdate(ValueAnimator animation) {
                 float value = (float) animation.getAnimatedValue();
-                if(isTurnLeft) {
+                if (isTurnLeft) {
                     p2.setX((float) (R - R / 3.0f * Math.sin(value)));
                     p4.setX(-R);
                 } else {
@@ -159,43 +166,27 @@ public class BezierCircle {
                     p2.setX(R);
                 }
                 view.invalidate();
-
-                isStartWave = true;
-            }
-        });
-        valueAnimator.addListener(new AnimatorListenerAdapter() {
-            @Override
-            public void onAnimationEnd(Animator animation) {
-                isStartWave = false;
             }
         });
         valueAnimator.start();
     }
 
-    float[][] f = new float[4][3];
-    float[] result = new float[3];
-    int[] colors = new int[4];
+    int[][] f = new int[2][3];
+    int[] result = new int[3];
+
     public int getCurrentColor(float percent, int startColor, int endColor) {
-        colors[0] = startColor;
-        colors[1] = Color.GRAY;
-        colors[2] = Color.GRAY;
-        colors[3] = endColor;
-        for (int i = 0; i < colors.length; i++) {
-            f[i][0] = (colors[i] & 0xff0000) >> 16;
-            f[i][1] = (colors[i] & 0x00ff00) >> 8;
-            f[i][2] = (colors[i] & 0x0000ff);
-        }
+        f[0][0] = (startColor & 0xff0000) >> 16;
+        f[0][1] = (startColor & 0x00ff00) >> 8;
+        f[0][2] = (startColor & 0x0000ff);
+
+        f[1][0] = (endColor & 0xff0000) >> 16;
+        f[1][1] = (endColor & 0x00ff00) >> 8;
+        f[1][2] = (endColor & 0x0000ff);
+
         for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < f.length; j++) {
-                if (f.length == 1 || percent == j / (f.length - 1f)) {
-                    result = f[j];
-                } else {
-                    if (percent > j / (f.length - 1f) && percent < (j + 1f) / (f.length - 1)) {
-                        result[i] = f[j][i] - (f[j][i] - f[j + 1][i]) * (percent - j / (f.length - 1f)) * (f.length - 1f);
-                    }
-                }
-            }
+            result[i] = (int) (f[0][i] + (f[1][i] - f[0][i]) * percent);
         }
-        return Color.rgb((int) result[0], (int) result[1], (int) result[2]);
+
+        return Color.rgb(result[0], result[1], result[2]);
     }
 }
