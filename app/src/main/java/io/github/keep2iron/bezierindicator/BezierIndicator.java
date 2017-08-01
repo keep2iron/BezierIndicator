@@ -23,7 +23,11 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.animation.DecelerateInterpolator;
+import android.view.animation.AccelerateDecelerateInterpolator;
+import android.view.animation.Interpolator;
+import android.widget.Scroller;
+
+import java.lang.reflect.Field;
 
 import io.github.keep2iron.bezierindicator.entry.TouchPoint;
 
@@ -33,23 +37,25 @@ import io.github.keep2iron.bezierindicator.entry.TouchPoint;
  * @since 2017/07/19 15:28
  */
 public class BezierIndicator extends View implements ViewPager.OnPageChangeListener {
-    private Paint mPaint;                           //画笔
+    private Paint mPaint;                   //画笔
     private Point mStartPoint;
 
-    private int M;                                  //起始点和控制点的距离
-    private int R;                             //圆的半径
+    private int M;                          //起始点和控制点的距离
+    private int R;                          //圆的半径
 
-    private float C = 0.551915024494f;              //如果要画圆，控制点的距离与半径的比值是这个值
+    private float C = 0.551915024494f;      //如果要画圆，控制点的距离与半径的比值是这个值
 
     BezierCircle mBezierCircle;
 
-    private boolean isInitlize;                     //是否要进行初始化,因为进行坐标计算
+    private boolean isInitialise;           //是否要进行初始化,因为进行坐标计算
 
-    private float mCurrentPercent;                  //当前滑动的百分比
+    private float mPercent;                 //当前滑动的百分比
 
-    int span;                                       //元素之间的间隔距离
+    int span;                               //元素之间的间隔距离
 
-    int mCurrentPosition;                            //当前page的Position，跟随ViewPager的滑动的变化而变化
+    int mViewPagerPosition;                 //当前ViewPager的Position，跟随ViewPager的滑动的变化而变化
+
+    int mCurrentPosition;
 
     int[] roundColors = new int[3];
 
@@ -141,9 +147,39 @@ public class BezierIndicator extends View implements ViewPager.OnPageChangeListe
         mBitmaps[2] = BitmapFactory.decodeResource(getResources(), io.github.keep2iron.bezierindicator.R.drawable.notice);
     }
 
-    public void setUpWithViewPager(ViewPager viewPager){
+    public void setUpWithViewPager(ViewPager viewPager) {
         this.mViewPager = viewPager;
         mViewPager.addOnPageChangeListener(this);
+    }
+
+    /**
+     * 因为点击滑动的Scroller的时间长度和手指拖动之后Scroller之后的时间长度不一样，因此在触发时
+     * 分别进行设置不同的Scroller
+     */
+    private void setDurationScroller() {
+        try {
+            Field mScroller;
+            mScroller = ViewPager.class.getDeclaredField("mScroller");
+            mScroller.setAccessible(true);
+            Interpolator sInterpolator = new AccelerateDecelerateInterpolator();
+            FixedScroller scroller = new FixedScroller(mViewPager.getContext(), sInterpolator);
+            mScroller.set(mViewPager, scroller);
+        } catch (NoSuchFieldException e) {
+        } catch (IllegalArgumentException e) {
+        } catch (IllegalAccessException e) {
+        }
+    }
+
+    private void setOriginScroller() {
+        try {
+            Field mScroller;
+            mScroller = ViewPager.class.getDeclaredField("mScroller");
+            mScroller.setAccessible(true);
+            mScroller.set(mViewPager, new Scroller(getContext()));
+        } catch (NoSuchFieldException e) {
+        } catch (IllegalArgumentException e) {
+        } catch (IllegalAccessException e) {
+        }
     }
 
     @Override
@@ -158,7 +194,7 @@ public class BezierIndicator extends View implements ViewPager.OnPageChangeListe
         mStartPoint = new Point(span + R, h / 2);
         mBezierCircle = new BezierCircle(R, M);
 
-        isInitlize = true;
+        isInitialise = true;
 
         float size = 0.5f;
         for (int i = 0; i < mBitmapRects.length; i++) {
@@ -176,8 +212,18 @@ public class BezierIndicator extends View implements ViewPager.OnPageChangeListe
 
     @Override
     public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
-        if (!isInitlize) return;
-        if(!isMoveByTouch) moveBezierCirclePercent(position, positionOffset);
+        if (!isInitialise) return;
+
+        if (!isMoveByTouch) {
+            boolean right = position + positionOffset - mViewPagerPosition > 0;
+            if (positionOffset != 0.0f) {
+                //位移未完成
+                startColor = roundColors[mViewPagerPosition];
+                endColor = roundColors[(mViewPagerPosition + (right ? 1 : -1)) % roundColors.length];
+                color = mBezierCircle.getCurrentColor(right ? positionOffset : 1 - positionOffset, startColor, endColor);
+            }
+            moveBezierCirclePercent(position, positionOffset);
+        }
     }
 
     /**
@@ -187,18 +233,20 @@ public class BezierIndicator extends View implements ViewPager.OnPageChangeListe
      * @param positionOffset
      */
     private void moveBezierCirclePercent(int position, float positionOffset) {
-        mBezierCircle.drawByPositionOffset(positionOffset); //通过当前的偏移计算小圆的形状
-
-        boolean right = position + positionOffset - mCurrentPosition > 0;
-        if (positionOffset != 0.0f) {
-            //位移未完成
-            startColor = roundColors[mCurrentPosition];
-            endColor = roundColors[(mCurrentPosition + (right ? 1 : - 1)) % roundColors.length];
-            color = mBezierCircle.getCurrentColor(right ? positionOffset : 1 - positionOffset, startColor, endColor);
+        if (position + positionOffset - mCurrentPosition > 0) {
+//            Log.e("tag", "form : " + mCurrentPosition + "  to : " + (mCurrentPosition + 1));
+            mBezierCircle.drawByPositionOffset(mCurrentPosition, (mCurrentPosition + 1), positionOffset);
+        } else {
+//            Log.e("tag", "form : " + mCurrentPosition + "  to : " + (mCurrentPosition - 1));
+            mBezierCircle.drawByPositionOffset(mCurrentPosition, (mCurrentPosition - 1), 1 - positionOffset);
         }
 
-        mCurrentPosition = position;     //用于计算当前偏移的position
-        mCurrentPercent = positionOffset;
+        if (positionOffset == 0.0f) {
+            mCurrentPosition = position;
+        }
+
+        mViewPagerPosition = position;     //用于计算当前偏移的position
+        mPercent = positionOffset;
 
         invalidate();
     }
@@ -224,8 +272,8 @@ public class BezierIndicator extends View implements ViewPager.OnPageChangeListe
     }
 
     private void drawTouchWave(Canvas canvas) {
-        if(mTouchPoint.isShow()) {
-            canvas.drawCircle(mTouchPoint.getCenterX(),mTouchPoint.getCenterY(),mTouchPoint.R,mTouchPoint.mPaint);
+        if (mTouchPoint.isShow()) {
+            canvas.drawCircle(mTouchPoint.getCenterX(), mTouchPoint.getCenterY(), mTouchPoint.R, mTouchPoint.mPaint);
         }
     }
 
@@ -260,10 +308,8 @@ public class BezierIndicator extends View implements ViewPager.OnPageChangeListe
         canvas.save();
 
         canvas.translate(mStartPoint.x
-                + (translateMoveSize) * mCurrentPercent
-                + (span + 2 * R) * mCurrentPosition, mStartPoint.y);
-
-        Log.e("tag","mCurrentPercent : " + mCurrentPercent + " translateMoveSize : " + translateMoveSize);
+                + (translateMoveSize) * mPercent
+                + (span + 2 * R) * mViewPagerPosition, mStartPoint.y);
 
         Path path = mBezierCircle.buildPath();
         mPaint.setColor(color);
@@ -271,24 +317,24 @@ public class BezierIndicator extends View implements ViewPager.OnPageChangeListe
         canvas.restore();
     }
 
-    private int getDistance(float x1,float y1,float x2,float y2){
-        return (int) Math.sqrt(Math.pow(x1 - x2,2) + Math.pow(y1 - y2,2));
+    private int getDistance(float x1, float y1, float x2, float y2) {
+        return (int) Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         super.onTouchEvent(event);
 
-        switch (event.getActionMasked()){
+        switch (event.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
                 for (int i = 0; i < mBitmapRects.length; i++) {
                     int distance = getDistance(mBitmapRects[i].centerX(), mBitmapRects[i].centerY(), event.getX(), event.getY());
-                    if(distance <= R){
+                    if (distance <= R) {
                         mTouchPoint.setCenterX((int) mBitmapRects[i].centerX());
                         mTouchPoint.setCenterY((int) mBitmapRects[i].centerY());
                         mTouchPoint.setShow(true);
                         startWave();
-                        startMoveBezierCircleByTouch(mCurrentPosition,i);
+                        startMoveBezierCircleByTouch(mCurrentPosition, i);
                         break;
                     }
                 }
@@ -301,7 +347,7 @@ public class BezierIndicator extends View implements ViewPager.OnPageChangeListe
     /**
      * 开启点击的水波纹
      */
-    private void startWave(){
+    private void startWave() {
         ValueAnimator valueAnimator = ValueAnimator.ofFloat(R, 4.0f / 3 * R);
         valueAnimator.setDuration(400);
         valueAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
@@ -325,10 +371,16 @@ public class BezierIndicator extends View implements ViewPager.OnPageChangeListe
     }
 
     boolean isMoveByTouch;
-    private void startMoveBezierCircleByTouch(final int formPos, final int toPos){
-        if(formPos == toPos) return;
+
+    private void startMoveBezierCircleByTouch(final int formPos, final int toPos) {
+        if (formPos == toPos) return;
         final boolean isTurnRight = toPos - formPos > 0;
-        translateMoveSize =  Math.abs(toPos - formPos) *(span + 2 * R);
+        translateMoveSize = Math.abs(toPos - formPos) * (span + 2 * R);
+        setDurationScroller();
+
+        //位移未完成
+        startColor = roundColors[formPos];
+        endColor = roundColors[toPos];
 
         mViewPager.setCurrentItem(toPos);
         ValueAnimator valueAnimator = ValueAnimator.ofInt(0, Math.abs(translateMoveSize));
@@ -339,15 +391,18 @@ public class BezierIndicator extends View implements ViewPager.OnPageChangeListe
                 isMoveByTouch = true;
                 int value = (int) animation.getAnimatedValue();
 
-                float percent = Math.abs(value * 1.0f) / Math.abs((toPos - formPos) *(span + 2 * R));
-                if(percent >= 1.0f) {
+                float percent = Math.abs(value * 1.0f) / Math.abs((toPos - formPos) * (span + 2 * R));
+                color = mBezierCircle.getCurrentColor(percent, startColor, endColor);
+
+                if (percent >= 1.0f) {
                     isMoveByTouch = false;
                     translateMoveSize = span + 2 * R;
-                    mCurrentPosition = toPos;
+                    mViewPagerPosition = toPos;
+                    setOriginScroller();
                     moveBezierCirclePercent(toPos, 0.0f);
-                }else {
-                    Log.e("tag","value : " + value);
-                    moveBezierCirclePercent(isTurnRight ? formPos : toPos, isTurnRight ? percent : 1.00003f - percent);
+                } else {
+                    Log.e("tag", "value : " + value);
+                    moveBezierCirclePercent(isTurnRight ? formPos : toPos, isTurnRight ? percent : 1 - percent);
                 }
             }
         });

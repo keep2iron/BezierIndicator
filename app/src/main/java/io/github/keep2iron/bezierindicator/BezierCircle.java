@@ -1,15 +1,11 @@
 package io.github.keep2iron.bezierindicator;
 
-import android.animation.Animator;
-import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.graphics.Color;
 import android.graphics.Path;
 import android.util.Log;
 import android.view.View;
 import android.view.animation.AccelerateDecelerateInterpolator;
-
-import java.util.Arrays;
 
 import io.github.keep2iron.bezierindicator.entry.HorizontalPoint;
 import io.github.keep2iron.bezierindicator.entry.VerticalPoint;
@@ -47,8 +43,6 @@ public class BezierCircle {
         p4 = new VerticalPoint(-R, 0, M);
 
         mPath = new Path();
-
-//        Log.e("tag","p1.x" + p1.x + " p2.x " + p2.x + " p3.x" + p3.x);
     }
 
     public Path buildPath() {
@@ -67,51 +61,91 @@ public class BezierCircle {
     /**
      * 通过ViewPager的百分比进行控制显示的状态
      *
+     * @param fromPos
+     * @param toPos
      * @param positionOffset Value from [0, 1) indicating the offset from the page at position.
      * @see android.support.v4.view.ViewPager.OnPageChangeListener
      */
-    public void drawByPositionOffset(float positionOffset) {
+    public void drawByPositionOffset(int fromPos, int toPos, float positionOffset) {
+        boolean isTurnRight = toPos - fromPos > 0;
+
         if (positionOffset >= 0 && positionOffset <= 0.2f) {
-            buildCircle1(positionOffset);
+            buildCircle1(positionOffset, isTurnRight);
         } else if (positionOffset <= 0.5f) {
-            buildCircle2(positionOffset);
+            buildCircle2(positionOffset, isTurnRight);
         } else if (positionOffset <= 0.8f) {
-            buildCircle3(positionOffset);
+            buildCircle3(positionOffset, isTurnRight);
+        } else if (positionOffset <= 0.9f) {
+            buildCircle4(positionOffset, isTurnRight);
         } else if (positionOffset <= 1.0f) {
-            buildCircle4(positionOffset);
+            buildCircle5(positionOffset, isTurnRight);
         }
     }
 
-    private void buildCircle4(float positionOffset) {       //0.8 - 1.0
-        float p4X = -9 / 5.f * R + 4 / 5.f * R * (positionOffset - 0.8f) / 0.2f;
-        p4.setX(p4X);
+    private void buildCircle5(float positionOffset, boolean isTurnRight) {
+        double value = Math.sin(Math.toRadians((positionOffset - 0.9f) / 0.1f * 180));
+        Log.e("tag","value : " + value);
+        if(isTurnRight){
+            p4.setX((float) (-R +  R / 2.0f * value));
+        } else {
+            p2.setX((float) (R -  R / 2.0f * value));
+        }
+    }
 
-        p1.setX(0);
-        p3.setX(0);
-        p2.setX(R);
+    private void buildCircle4(float positionOffset, boolean isTurnRight) {       //0.8 - 09
+        if(isTurnRight) {
+            float p4X = -9 / 5.f * R + 4 / 5.f * R * (positionOffset - 0.8f) / 0.1f;
+            p4.setX(p4X);
 
-//        Log.e("tag","p1.x" + p1.x + " p2.x " + p2.x + " p3.x" + p3.x);
+            p1.setX(0);
+            p3.setX(0);
+            p2.setX(R);
+        }else{
+            float p2X = 9 / 5.f * R - 4 / 5.f * R * (positionOffset - 0.8f) / 0.1f;
+            p2.setX(p2X);
+
+            p1.setX(0);
+            p3.setX(0);
+            p4.setX(-R);
+        }
     }
 
     /**
      * 在这个过程中需要将circle从一个椭圆变成左边较尖锐的椭圆
      *
      * @param positionOffset
+     * @param isTurnRight
      */
-    private void buildCircle3(float positionOffset) {       //0.5 - 0.8f
-        float x = ((R + R + 4 / 5.f * R) / 2.f - R) - ((R + R + 4 / 5.f * R) / 2.f - R) * (positionOffset - 0.5f) / 0.3f;
-        p1.setX(x);
-        p3.setX(x);
+    private void buildCircle3(float positionOffset, boolean isTurnRight) {       //0.5 - 0.8f
+        if (isTurnRight) {
+            float x = ((R + R + 4 / 5.f * R) / 2.f - R) - ((R + R + 4 / 5.f * R) / 2.f - R) * (positionOffset - 0.5f) / 0.3f;
+            p1.setX(x);
+            p3.setX(x);
 
-        float m = 5.f * M / 3 - 2.f * M / 3 * (positionOffset - 0.5f) / 0.3f;
-        p2.setM(m);
-        p4.setM(m);
+            float m = 5.f * M / 3 - 2.f * M / 3 * (positionOffset - 0.5f) / 0.3f;
+            p2.setM(m);
+            p4.setM(m);
 
-        float p4X = -R - 4 / 5.f * R * (positionOffset - 0.5f) / 0.3f;
-        p4.setX(p4X);
+            float p4X = -R - 4 / 5.f * R * (positionOffset - 0.5f) / 0.3f;
+            p4.setX(p4X);
 
-        float p2X = 9 / 5.f * R - 4 / 5.f * R * (positionOffset - 0.5f) / 0.3f;
-        p2.setX(p2X);
+            float p2X = 9 / 5.f * R - 4 / 5.f * R * (positionOffset - 0.5f) / 0.3f;
+            p2.setX(p2X);
+        } else {
+            float x = ((R + R + 4 / 5.f * R) / 2.f - R) - ((R + R + 4 / 5.f * R) / 2.f - R) * (positionOffset - 0.5f) / 0.3f;
+            p1.setX(-x);
+            p3.setX(-x);
+
+            float m = 5.f * M / 3 - 2.f * M / 3 * (positionOffset - 0.5f) / 0.3f;
+            p2.setM(m);
+            p4.setM(m);
+
+            float p2X = R + 4 / 5.f * R * (positionOffset - 0.5f) / 0.3f;
+            p2.setX(p2X);
+
+            float p4X = -9 / 5.f * R + 4 / 5.f * R * (positionOffset - 0.5f) / 0.3f;
+            p4.setX(p4X);
+        }
     }
 
     /**
@@ -121,17 +155,30 @@ public class BezierCircle {
      * 然后 14 / 5R /2 为长轴一半 - R即为椭圆中心点的坐标
      *
      * @param positionOffset
+     * @param isTurnRight
      */
-    private void buildCircle2(float positionOffset) {   //0.2 < pos <= 0.5f
-        p2.setX(R + 4 / 5.f * R);
+    private void buildCircle2(float positionOffset, boolean isTurnRight) {   //0.2 < pos <= 0.5f
+        if (isTurnRight) {
+            p2.setX(R + 4 / 5.f * R);
 
-        float x = ((R + R + 4 / 5.f * R) / 2.f - R) * (positionOffset - 0.2f) / 0.3f;
-        p1.setX(x);
-        p3.setX(x);
+            float x = ((R + R + 4 / 5.f * R) / 2.f - R) * (positionOffset - 0.2f) / 0.3f;
+            p1.setX(x);
+            p3.setX(x);
 
-        float m = M + M * 2 / 3.f * (positionOffset - 0.2f) / 0.3f;
-        p4.setM(m);
-        p2.setM(m);
+            float m = M + M * 2 / 3.f * (positionOffset - 0.2f) / 0.3f;
+            p4.setM(m);
+            p2.setM(m);
+        } else {
+            p4.setX(-R - 4 / 5.f * R);
+
+            float x = ((R + R + 4 / 5.f * R) / 2.f - R) * (positionOffset - 0.2f) / 0.3f;
+            p1.setX(-x);
+            p3.setX(-x);
+
+            float m = M + M * 2 / 3.f * (positionOffset - 0.2f) / 0.3f;
+            p4.setM(m);
+            p2.setM(m);
+        }
     }
 
     /**
@@ -140,17 +187,26 @@ public class BezierCircle {
      * 变化率的百分比为 pos / 0.2f   0.2为区间值,pos在0 - 0.2f之间变化
      *
      * @param positionOffset
+     * @param isTurnRight
      */
-    private void buildCircle1(float positionOffset) {   //0 < pos <=0.2f
-        p1.setX(0);
-        p3.setX(0);
-        p4.setX(-R);
+    private void buildCircle1(float positionOffset, boolean isTurnRight) {   //0 < pos <=0.2f
+        if (isTurnRight) {
+            p1.setX(0);
+            p3.setX(0);
+            p4.setX(-R);
 
-        p2.setX(R + 4 / 5.0f * R * positionOffset / 0.2f);
+            p2.setX(R + 4 / 5.0f * R * positionOffset / 0.2f);
+        } else {
+            p1.setX(0);
+            p3.setX(0);
+            p2.setX(R);
+
+            p4.setX(-R - 4 / 5.0f * R * positionOffset / 0.2f);
+        }
     }
 
 
-    public void wave(final boolean isTurnLeft, final View view) {
+    public void wave(final boolean isTurnRight) {
         ValueAnimator valueAnimator = ValueAnimator.ofFloat(0, (float) Math.PI);
         valueAnimator.setInterpolator(new AccelerateDecelerateInterpolator());
         valueAnimator.setDuration(400);
@@ -158,21 +214,20 @@ public class BezierCircle {
             @Override
             public void onAnimationUpdate(ValueAnimator animation) {
                 float value = (float) animation.getAnimatedValue();
-                if (isTurnLeft) {
-                    p2.setX((float) (R - R / 3.0f * Math.sin(value)));
-                    p4.setX(-R);
-                } else {
+                if (isTurnRight) {
                     p4.setX((float) (-R + R / 3.0f * Math.sin(value)));
                     p2.setX(R);
+                } else {
+                    p2.setX((float) (R - R / 3.0f * Math.sin(value)));
+                    p4.setX(-R);
                 }
-                view.invalidate();
             }
         });
         valueAnimator.start();
     }
 
-    int[][] f = new int[2][3];
-    int[] result = new int[3];
+    private int[][] f = new int[2][3];
+    private int[] result = new int[3];
 
     public int getCurrentColor(float percent, int startColor, int endColor) {
         f[0][0] = (startColor & 0xff0000) >> 16;
