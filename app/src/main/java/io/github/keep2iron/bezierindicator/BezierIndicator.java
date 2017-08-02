@@ -307,8 +307,9 @@ public class BezierIndicator extends View implements ViewPager.OnPageChangeListe
     private void drawMoveCircle(Canvas canvas) {
         canvas.save();
 
+
         canvas.translate(mStartPoint.x
-                + (translateMoveSize) * mPercent
+                + translateMoveSize * mPercent
                 + (span + 2 * R) * mViewPagerPosition, mStartPoint.y);
 
         Path path = mBezierCircle.buildPath();
